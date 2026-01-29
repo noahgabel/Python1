@@ -14,3 +14,6 @@ pandas>=1.5.0
 
 # Visualization dependencies
 matplotlib>=3.6.0
+
+# Cryptography dependencies
+cryptography>=41.0.0
