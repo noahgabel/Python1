@@ -1,6 +1,5 @@
 """
-Load Module - ETL Pipeline (Encrypted Version)
-Med AES kryptering af data
+Load Module - Encrypted Version
 """
 
 import os
@@ -11,11 +10,7 @@ from security_module import SecurityManager
 
 
 def load_to_csv_pandas_encrypted(df_pandas, output_folder, original_url, security_mgr):
-    """
-    Gem transformeret data til CSV fil - KRYPTERET
-
-    Krypterer alle numeriske kolonner med valgt AES metode.
-    """
+    """Gem data til CSV - krypteret"""
     parsed_url = urlparse(original_url)
     original_filename = os.path.basename(parsed_url.path)
 
@@ -26,7 +21,6 @@ def load_to_csv_pandas_encrypted(df_pandas, output_folder, original_url, securit
     destination_path = os.path.join(output_folder, new_filename)
     os.makedirs(output_folder, exist_ok=True)
 
-    # Lav en kopi af dataframe til kryptering
     df_encrypted = df_pandas.copy()
 
     # Krypter numeriske kolonner
@@ -44,11 +38,7 @@ def load_to_csv_pandas_encrypted(df_pandas, output_folder, original_url, securit
 
 
 def load_to_mysql_pandas_encrypted(df_pandas, db_config, security_mgr):
-    """
-    Gem transformeret data til MySQL database - KRYPTERET
-
-    Krypterer alle numeriske kolonner før database insert.
-    """
+    """Gem data til MySQL - krypteret"""
     host = db_config.get('host', 'localhost')
     user = db_config.get('user', 'root')
     password = db_config.get('password', '')
@@ -70,7 +60,7 @@ def load_to_mysql_pandas_encrypted(df_pandas, db_config, security_mgr):
         cursor = connection.cursor()
         cursor.execute(f"DROP TABLE IF EXISTS {table}")
 
-        # Opdateret tabel struktur til TEXT (krypterede værdier er længere)
+        # TEXT kolonner til krypterede værdier
         create_table_sql = f"""
         CREATE TABLE {table} (
             sepal_length TEXT,
@@ -82,7 +72,7 @@ def load_to_mysql_pandas_encrypted(df_pandas, db_config, security_mgr):
         """
         cursor.execute(create_table_sql)
 
-        # Krypter og insert data
+        # Krypter og insert
         for _, row in df_pandas.iterrows():
             encrypted_row = (
                 security_mgr.encrypt_aes_gcm(str(row['sepal_length'])),
@@ -108,11 +98,7 @@ def load_to_mysql_pandas_encrypted(df_pandas, db_config, security_mgr):
 
 
 def read_from_mysql_encrypted(db_config, security_mgr):
-    """
-    Læs data fra MySQL database og DEKRYPTER
-
-    Dekrypterer alle numeriske kolonner efter læsning fra database.
-    """
+    """Læs og dekrypter data fra MySQL"""
     host = db_config.get('host', 'localhost')
     user = db_config.get('user', 'root')
     password = db_config.get('password', '')
@@ -136,16 +122,11 @@ def read_from_mysql_encrypted(db_config, security_mgr):
         )
 
     print(f"[OK] Decrypted {len(df)} rows")
-
     return df
 
 
 def read_from_csv_encrypted(csv_path, security_mgr):
-    """
-    Læs krypteret CSV fil og DEKRYPTER
-
-    Dekrypterer alle numeriske kolonner.
-    """
+    """Læs og dekrypter data fra CSV"""
     df = pd.read_csv(csv_path)
 
     print(f"[OK] Read {len(df)} encrypted rows from CSV: {csv_path}")
@@ -159,5 +140,4 @@ def read_from_csv_encrypted(csv_path, security_mgr):
         )
 
     print(f"[OK] Decrypted {len(df)} rows")
-
     return df

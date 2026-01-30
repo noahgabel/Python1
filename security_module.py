@@ -1,6 +1,5 @@
 """
 Security Module - Kryptografi
-Indeholder 3 forskellige AES krypteringsmetoder
 """
 
 import os
@@ -13,128 +12,88 @@ import base64
 
 
 class SecurityManager:
-    """
-    Håndterer kryptering og dekryptering af data
-    """
+    """Håndterer kryptering og dekryptering af data"""
 
     def __init__(self, key=None):
-        """
-        Initialiserer med en 32-byte AES nøgle.
-        Hvis ingen nøgle gives, genereres en ny.
-        """
         if key is None:
-            self.key = os.urandom(32)  # 256-bit AES key
+            self.key = os.urandom(32)
         else:
             self.key = key
 
     def get_key(self):
-        """Returnerer nøglen (til lagring)"""
         return self.key
 
     # METHOD 1: AES-GCM
     def encrypt_aes_gcm(self, data):
         """
-        Krypter med AES-GCM (Galois/Counter Mode)
+        Krypter med AES-GCM
 
-        Fordele:
-        - AEAD (Authenticated Encryption with Associated Data)
-        - Indbygget integritet og autenticitet
-        - Ingen padding nødvendig
-        - Hurtig (hardware acceleration)
-        - Modstandsdygtig mod manipulation
-
-        Ulemper:
-        - Nonce skal være unik for hver kryptering
+        Fordele: AEAD, ingen padding, hurtig, modstandsdygtig mod manipulation
+        Ulemper: Nonce skal være unik
         """
         aesgcm = AESGCM(self.key)
-        nonce = os.urandom(12)  # 96-bit nonce
+        nonce = os.urandom(12)
 
         if isinstance(data, str):
             data = data.encode('utf-8')
 
         ciphertext = aesgcm.encrypt(nonce, data, None)
-
-        # Returner nonce + ciphertext
         return base64.b64encode(nonce + ciphertext).decode('utf-8')
 
     def decrypt_aes_gcm(self, encrypted_data):
-        """Dekrypter AES-GCM krypteret data"""
+        """Dekrypter AES-GCM data"""
         aesgcm = AESGCM(self.key)
-
         encrypted_bytes = base64.b64decode(encrypted_data)
         nonce = encrypted_bytes[:12]
         ciphertext = encrypted_bytes[12:]
-
         plaintext = aesgcm.decrypt(nonce, ciphertext, None)
         return plaintext.decode('utf-8')
 
     # METHOD 2: AES-CBC
     def encrypt_aes_cbc(self, data):
         """
-        Krypter med AES-CBC (Cipher Block Chaining)
+        Krypter med AES-CBC
 
-        Fordele:
-        - Veletableret standard
-        - God sikkerhed når brugt korrekt
-
-        Ulemper:
-        - Kræver padding (PKCS7)
-        - Ingen indbygget integritet (skal bruge HMAC separat)
-        - Risiko for padding oracle attacks
-        - Langsommere end GCM
+        Fordele: Veletableret standard
+        Ulemper: Kræver padding, ingen indbygget integritet, langsommere
         """
         if isinstance(data, str):
             data = data.encode('utf-8')
 
-        # Generer random IV (Initialization Vector)
         iv = os.urandom(16)
 
-        # Padding til blokstørrelse (128 bit / 16 bytes)
         padder = padding.PKCS7(128).padder()
         padded_data = padder.update(data) + padder.finalize()
 
-        # Krypter
         cipher = Cipher(algorithms.AES(self.key), modes.CBC(iv), backend=default_backend())
         encryptor = cipher.encryptor()
         ciphertext = encryptor.update(padded_data) + encryptor.finalize()
 
-        # Returner IV + ciphertext
         return base64.b64encode(iv + ciphertext).decode('utf-8')
 
     def decrypt_aes_cbc(self, encrypted_data):
-        """Dekrypter AES-CBC krypteret data"""
+        """Dekrypter AES-CBC data"""
         encrypted_bytes = base64.b64decode(encrypted_data)
         iv = encrypted_bytes[:16]
         ciphertext = encrypted_bytes[16:]
 
-        # Dekrypter
         cipher = Cipher(algorithms.AES(self.key), modes.CBC(iv), backend=default_backend())
         decryptor = cipher.decryptor()
         padded_plaintext = decryptor.update(ciphertext) + decryptor.finalize()
 
-        # Fjern padding
         unpadder = padding.PKCS7(128).unpadder()
         plaintext = unpadder.update(padded_plaintext) + unpadder.finalize()
 
         return plaintext.decode('utf-8')
 
-    # METHOD 3: Fernet (AES-CBC wrapper)
+    # METHOD 3: Fernet
     def encrypt_fernet(self, data):
         """
-        Krypter med Fernet (high-level AES-CBC wrapper)
+        Krypter med Fernet (AES-CBC wrapper)
 
-        Fordele:
-        - Meget simpel API
-        - Indbygget integritet (HMAC)
-        - Timestamp support
-        - God til simple use cases
-
-        Ulemper:
-        - Mindre fleksibel
-        - Langsommere end GCM
-        - Større ciphertext (overhead)
+        Fordele: Simpel API, indbygget HMAC
+        Ulemper: Mindre fleksibel, langsommere, større ciphertext
         """
-        # Fernet kræver 32-byte URL-safe base64-encoded key
         fernet_key = base64.urlsafe_b64encode(self.key)
         f = Fernet(fernet_key)
 
@@ -145,7 +104,7 @@ class SecurityManager:
         return encrypted.decode('utf-8')
 
     def decrypt_fernet(self, encrypted_data):
-        """Dekrypter Fernet krypteret data"""
+        """Dekrypter Fernet data"""
         fernet_key = base64.urlsafe_b64encode(self.key)
         f = Fernet(fernet_key)
 
@@ -156,7 +115,6 @@ class SecurityManager:
         return decrypted.decode('utf-8')
 
 
-# Gem nøgle til fil
 def save_key(key, filename='encryption.key'):
     """Gem krypteringsnøgle til fil"""
     with open(filename, 'wb') as key_file:
@@ -164,7 +122,6 @@ def save_key(key, filename='encryption.key'):
     print(f"[OK] Key saved to {filename}")
 
 
-# Indlæs nøgle fra fil
 def load_key(filename='encryption.key'):
     """Indlæs krypteringsnøgle fra fil"""
     try:

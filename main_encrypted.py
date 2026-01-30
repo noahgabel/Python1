@@ -1,6 +1,5 @@
 """
 Main ETL Pipeline Script - MED KRYPTERING
-Pipeline med ETL, database, datavisualisering og AES kryptering
 """
 
 import extract_module
@@ -37,54 +36,30 @@ def main():
     """
     VALG AF KRYPTERINGSMETODE: AES-GCM
 
-    Jeg har implementeret 3 krypteringsmetoder:
-    1. AES-GCM (Galois/Counter Mode)
-    2. AES-CBC (Cipher Block Chaining)
-    3. Fernet (AES-CBC wrapper)
+    3 implementerede metoder:
+    1. AES-GCM
+    2. AES-CBC
+    3. Fernet
 
-    VALGT METODE: AES-GCM
+    VALGT: AES-GCM
 
-    Begrundelse for valg af AES-GCM til iris datatype:
+    Begrundelse:
 
-    For iris blomster data (numeriske målinger + art navn) er AES-GCM bedst fordi:
+    AES-GCM er bedst til iris data fordi:
+    - AEAD (integritet og autenticitet indbygget)
+    - Hurtigst (hardware acceleration)
+    - Ingen padding nødvendig
+    - Beskytter mod manipulation
+    - Moderne standard (anbefalet til nye systemer)
 
-    SIKKERHED:
-    - AEAD (Authenticated Encryption): Indbygget integritet og autenticitet
-    - Beskytter mod manipulation af krypteret data
-    - Detekterer hvis nogen ændrer de krypterede værdier
+    Hvorfor IKKE de andre:
+    - AES-CBC: Kræver HMAC separat, padding, langsommere
+    - Fernet: Større overhead, langsommere
 
-    PERFORMANCE:
-    - Hurtigst af de 3 metoder (hardware acceleration)
-    - Vigtig når vi krypterer 50+ rækker med 4 kolonner hver
-
-    SIMPLICITET:
-    - Ingen padding nødvendig (modsat AES-CBC)
-    - Mindre kompleks end Fernet
-    - Færre fejlmuligheder
-
-    MODERNE STANDARD:
-    - Anbefalet til nye systemer
-    - Bruges i TLS 1.3, moderne API'er
-
-    Hvorfor IKKE de andre metoder:
-
-    AES-CBC:
-    - Kræver separat HMAC for integritet
-    - Kræver padding (PKCS7) - ekstra kompleksitet
-    - Risiko for padding oracle attacks
-    - Langsommere end GCM
-
-    Fernet:
-    - Større overhead (længere ciphertext)
-    - Langsommere end GCM
-    - Mindre fleksibel
-    - Bedre til simple use cases, men overkill her
-
-    KONKLUSION: AES-GCM giver bedste balance mellem sikkerhed,
-    performance og simplicitet for vores blomster data.
+    Konklusion: AES-GCM giver bedste balance for vores data.
     """
 
-    # Indlæs eller generer krypteringsnøgle
+    # Indlæs eller generer nøgle
     key = load_key('encryption.key')
     if key is None:
         security_mgr = SecurityManager()
@@ -94,11 +69,9 @@ def main():
 
     print(f"[OK] Using AES-GCM encryption")
 
-    # =========================================================================
-    # STEP 1: EXTRACT
-    # =========================================================================
+    # EXTRACT
     print("\n" + "=" * 70)
-    print("STEP 1: EXTRACT - Downloading data")
+    print("STEP 1: EXTRACT")
     print("=" * 70)
 
     try:
@@ -107,11 +80,9 @@ def main():
         print(f"[ERROR] Extract failed: {e}")
         return
 
-    # =========================================================================
-    # STEP 2: TRANSFORM
-    # =========================================================================
+    # TRANSFORM
     print("\n" + "=" * 70)
-    print("STEP 2: TRANSFORM - Filtering Iris-setosa data")
+    print("STEP 2: TRANSFORM")
     print("=" * 70)
 
     try:
@@ -120,11 +91,9 @@ def main():
         print(f"[ERROR] Transform failed: {e}")
         return
 
-    # =========================================================================
-    # STEP 3: LOAD (MED KRYPTERING)
-    # =========================================================================
+    # LOAD (KRYPTERET)
     print("\n" + "=" * 70)
-    print("STEP 3: LOAD - Saving ENCRYPTED transformed data")
+    print("STEP 3: LOAD - ENCRYPTED")
     print("=" * 70)
 
     try:
@@ -143,42 +112,35 @@ def main():
         print(f"[WARNING] Load to MySQL failed: {e}")
         print("Continuing without MySQL...")
 
-    # =========================================================================
-    # STEP 4: VISUALIZE (MED DEKRYPTERING)
-    # =========================================================================
+    # VISUALIZE (DEKRYPTERET)
     print("\n" + "=" * 70)
-    print("STEP 4: VISUALIZE - DECRYPTING and visualizing data")
+    print("STEP 4: VISUALIZE - DECRYPTED")
     print("=" * 70)
 
     try:
         df_for_viz = load_module_encrypted.read_from_mysql_encrypted(DB_CONFIG, security_mgr)
     except Exception as e:
         print(f"[WARNING] Could not read from MySQL: {e}")
-        print("Using CSV file for visualization...")
+        print("Using CSV file...")
         df_for_viz = load_module_encrypted.read_from_csv_encrypted(csv_output, security_mgr)
 
     print("\nGenerating visualizations...")
-    print("(Close each plot window to proceed to the next)")
+    print("(Close each plot window to proceed)")
 
     visualization_module.create_scatter_plot(df_for_viz)
     visualization_module.create_histogram(df_for_viz)
     visualization_module.create_boxplots(df_for_viz)
 
-    # =========================================================================
     # SUMMARY
-    # =========================================================================
     print("\n" + "=" * 70)
-    print("ENCRYPTED ETL PIPELINE COMPLETED SUCCESSFULLY!")
+    print("ENCRYPTED ETL PIPELINE COMPLETED!")
     print("=" * 70)
     print(f"\nSummary:")
-    print(f"  - Data extracted from: {DATA_URL}")
-    print(f"  - Original data: {INPUT_FOLDER}")
-    print(f"  - Encrypted data saved to:")
-    print(f"    * CSV: {csv_output}")
-    print(f"    * MySQL: {DB_CONFIG['database']}.{DB_CONFIG['table']}")
-    print(f"  - Encryption method: AES-GCM")
-    print(f"  - Total filtered records: {len(df_for_viz)}")
-    print(f"  - Visualizations: scatter plot, histogram, boxplots")
+    print(f"  - Data source: {DATA_URL}")
+    print(f"  - Encrypted CSV: {csv_output}")
+    print(f"  - Encrypted MySQL: {DB_CONFIG['database']}.{DB_CONFIG['table']}")
+    print(f"  - Encryption: AES-GCM")
+    print(f"  - Records: {len(df_for_viz)}")
     print("\n" + "=" * 70)
 
 
